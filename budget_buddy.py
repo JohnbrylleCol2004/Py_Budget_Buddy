@@ -3,12 +3,52 @@ from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+import sqlite3
+import os
 
 # Global variables
 day_count = 1  # Initialize the day counter
 all_data = []  # List to store past days' data
 total_amount = 0  # Initialize total amount
 duration_days = 0  # Initialize duration days
+DATABASE_NAME = "input.db"  # Database file name (updated to input.db)
+
+# Function to initialize the database
+def initialize_database():
+    if not os.path.exists(DATABASE_NAME):
+        conn = sqlite3.connect(DATABASE_NAME)
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS expenses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                category TEXT NOT NULL,
+                item TEXT NOT NULL,
+                amount REAL NOT NULL
+            )
+        ''')
+        conn.commit()
+        conn.close()
+
+# Function to save data to the database
+def save_to_database(date, category, item, amount):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO expenses (date, category, item, amount)
+        VALUES (?, ?, ?, ?)
+    ''', (date, category, item, amount))
+    conn.commit()
+    conn.close()
+
+# Function to fetch all data from the database
+def fetch_database():
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT date, category, item, amount FROM expenses")
+    data = cursor.fetchall()
+    conn.close()
+    return data
 
 # Function to switch to the second screen
 def go_to_budget_screen():
@@ -18,9 +58,33 @@ def go_to_budget_screen():
 # Function to handle the submit button in the budget input screen
 def submit_budget():
     global duration_days
-    duration_days = int(duration_entry.get())
-    budget_screen.pack_forget()  # Hide budget input screen
-    create_expense_tracker_gui()  # Show expense tracker GUI
+    try:
+        duration_days = int(duration_entry.get())
+        if duration_days <= 0:
+            raise ValueError("Duration must be a positive integer.")
+        budget_screen.pack_forget()  # Hide budget input screen
+        create_expense_tracker_gui()  # Show expense tracker GUI
+    except ValueError as e:
+        messagebox.showerror("Invalid Input", str(e))
+
+# Function to clear placeholder text on focus
+def clear_placeholder(event):
+    widget = event.widget
+    if widget.get() == "Title" or widget.get() == "Enter Duration" or widget.get() == "Enter Budget":
+        widget.delete(0, tk.END)
+        widget.config(fg="black")
+
+# Function to restore placeholder text if input is empty
+def restore_placeholder(event):
+    widget = event.widget
+    if widget.get() == "":
+        if widget == title_entry:
+            widget.insert(0, "Title")
+        elif widget == duration_entry:
+            widget.insert(0, "Enter Duration")
+        elif widget == budget_entry:
+            widget.insert(0, "Enter Budget")
+        widget.config(fg="grey")
 
 # Create the main window
 root = tk.Tk()
@@ -49,16 +113,22 @@ title_label = tk.Label(budget_screen, text="Let's start your budgeting journey",
                        font=("Arial", 16, "bold"), fg="white", bg="purple")
 title_label.pack(pady=20)
 
-title_entry = tk.Entry(budget_screen, width=30, font=("Arial", 12))
+title_entry = tk.Entry(budget_screen, width=30, font=("Arial", 12), fg="grey")
 title_entry.insert(0, "Title")
+title_entry.bind("<FocusIn>", clear_placeholder)
+title_entry.bind("<FocusOut>", restore_placeholder)
 title_entry.pack(pady=5)
 
-duration_entry = tk.Entry(budget_screen, width=30, font=("Arial", 12))
+duration_entry = tk.Entry(budget_screen, width=30, font=("Arial", 12), fg="grey")
 duration_entry.insert(0, "Enter Duration")
+duration_entry.bind("<FocusIn>", clear_placeholder)
+duration_entry.bind("<FocusOut>", restore_placeholder)
 duration_entry.pack(pady=5)
 
-budget_entry = tk.Entry(budget_screen, width=30, font=("Arial", 12))
+budget_entry = tk.Entry(budget_screen, width=30, font=("Arial", 12), fg="grey")
 budget_entry.insert(0, "Enter Budget")
+budget_entry.bind("<FocusIn>", clear_placeholder)
+budget_entry.bind("<FocusOut>", restore_placeholder)
 budget_entry.pack(pady=5)
 
 submit_button = tk.Button(budget_screen, text="SUBMIT", font=("Arial", 12, "bold"), bg="lightgray", command=submit_budget)
@@ -146,6 +216,7 @@ def insert_data():
             total_amount += amount  # Update total
             update_total_label()  # Refresh the total amount display
 
+            save_to_database(date, category, item, amount)  # Save to database
             reset_inputs()  # Reset input fields after inserting data
         except ValueError:
             messagebox.showerror("Input Error", "Amount must be a number.")
@@ -176,10 +247,10 @@ def next_day():
     if day_data:
         all_data.append((f"Day {day_count}", day_data))  # Store with day label
 
-    if day_count == duration_days: # pra mag display si table at pie chart pag si days nag reach sa duration
+    if day_count == duration_days: # Display table and pie chart when duration is reached
         all_expenses = [item for day, data in all_data for item in data]
-        budget = [total_amount] # pra sa calculations
-        display_table_Chart(all_expenses, budget) #function pang display
+        budget = [total_amount]  # For calculations
+        display_table_Chart(all_expenses, budget)  # Display table and chart
         return
 
     # Increment the day count
@@ -214,7 +285,7 @@ def display_table_Chart(data, budget):
     table_frame.pack(side="top", fill="both", expand=True, pady=(0, 10))
 
     height_database = min(len(data), 50)
-    table = ttk.Treeview(table_frame, columns=("Date", "Category", "Item", "Amount"), show="headings", height= height_database)
+    table = ttk.Treeview(table_frame, columns=("Date", "Category", "Item", "Amount"), show="headings", height=height_database)
 
     table.heading("Date", text="Date", anchor="center")
     table.heading("Category", text="Category", anchor="center")
@@ -226,10 +297,10 @@ def display_table_Chart(data, budget):
     table.column("Item", width=120, anchor="center")
     table.column("Amount", width=120, anchor="center")
 
-    total_expenses = 1500 #for sample to HAA
+    total_expenses = 0  # Initialize total expenses
 
     for row in data:
-        table.insert("","end", values=row)
+        table.insert("", "end", values=row)
         total_expenses += float(row[3])
 
     table.pack(side="top", fill="both", expand=True, padx=10, pady=5)
@@ -255,7 +326,7 @@ def display_table_Chart(data, budget):
     save_button = tk.Button(button_frame, text="SAVE", command=show_data)
     save_button.pack(side="left", padx=20, pady=5)
 
-    delete_button = tk.Button(button_frame, text="DELETE")
+    delete_button = tk.Button(button_frame, text="DELETE", command=delete_data)
     delete_button.pack(side="right", padx=20, pady=5)
 
     messagebox.showinfo("Information", f"Congrats you have completed the duration. You have saved {budget_left:.2f}")
@@ -270,7 +341,7 @@ def for_pie_chart(data):
         category = row[1]
         amount = float(row[3])
 
-        if category in  category_totals:
+        if category in category_totals:
             category_totals[category] += amount
         else:
             category_totals[category] = amount
@@ -293,7 +364,24 @@ def for_pie_chart(data):
     canvas.draw()
 
 def show_data():
-    pass
+    """Displays all data from the database."""
+    data = fetch_database()
+    if data:
+        display_table_Chart(data, [total_amount])
+    else:
+        messagebox.showinfo("No Data", "No expenses found in the database.")
+
+def delete_data():
+    """Deletes all data from the database."""
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM expenses")
+    conn.commit()
+    conn.close()
+    messagebox.showinfo("Success", "All data has been deleted.")
+
+# Initialize the database
+initialize_database()
 
 # Start the application
 root.mainloop()
