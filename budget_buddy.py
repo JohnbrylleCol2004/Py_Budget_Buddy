@@ -7,11 +7,11 @@ import sqlite3
 import os
 
 # Global variables
-day_count = 1  # Initialize the day counter
-all_data = []  # List to store past days' data
-total_amount = 0  # Initialize total amount
-duration_days = 0  # Initialize duration days
-DATABASE_NAME = "input.db"  # Database file name (updated to input.db)
+day_count = 1  
+all_data = []  
+total_amount = 0  
+duration_days = 0  
+DATABASE_NAME = "input.db"  
 
 # Function to initialize the database
 def initialize_database():
@@ -52,8 +52,8 @@ def fetch_database():
 
 # Function to switch to the second screen
 def go_to_budget_screen():
-    welcome_screen.pack_forget()  # Hide welcome screen
-    budget_screen.pack()  # Show budget input screen
+    welcome_screen.pack_forget()  
+    budget_screen.pack()  
 
 # Function to handle the submit button in the budget input screen
 def submit_budget():
@@ -62,8 +62,8 @@ def submit_budget():
         duration_days = int(duration_entry.get())
         if duration_days <= 0:
             raise ValueError("Duration must be a positive integer.")
-        budget_screen.pack_forget()  # Hide budget input screen
-        create_expense_tracker_gui()  # Show expense tracker GUI
+        budget_screen.pack_forget()  
+        create_expense_tracker_gui()  
     except ValueError as e:
         messagebox.showerror("Invalid Input", str(e))
 
@@ -184,8 +184,8 @@ def create_expense_tracker_gui():
     tree = ttk.Treeview(table_frame, columns=columns, show="headings")
     
     for col in columns:
-        tree.heading(col, text=col)  # Bold headers
-        tree.column(col, width=140, anchor="center")  # Center align data
+        tree.heading(col, text=col)  
+        tree.column(col, width=140, anchor="center") 
     
     tree.pack(expand=True, fill="both")
     
@@ -211,13 +211,13 @@ def insert_data():
     
     if date and category and item and amount:
         try:
-            amount = float(amount)  # Convert amount to float for summation
+            amount = float(amount)  
             tree.insert("", "end", values=(date, category, item, f"{amount:.2f}"))
-            total_amount += amount  # Update total
-            update_total_label()  # Refresh the total amount display
+            total_amount += amount  
+            update_total_label()  
 
-            save_to_database(date, category, item, amount)  # Save to database
-            reset_inputs()  # Reset input fields after inserting data
+            save_to_database(date, category, item, amount)
+            reset_inputs()
         except ValueError:
             messagebox.showerror("Input Error", "Amount must be a number.")
     else:
@@ -225,10 +225,10 @@ def insert_data():
 
 def reset_inputs():
     """Clears input fields for new entry."""
-    date_entry.set_date(None)  # Reset date field correctly
-    category_combo.set("")  # Reset category selection
-    item_entry.delete(0, tk.END)  # Clear item field
-    amount_entry.delete(0, tk.END)  # Clear amount field
+    date_entry.set_date(None)
+    category_combo.set("")
+    item_entry.delete(0, tk.END)
+    amount_entry.delete(0, tk.END)
 
 def next_day():
     """Progresses the day count, saves current data, resets table, and keeps total."""
@@ -242,15 +242,15 @@ def next_day():
     # Save the current day's data
     day_data = []
     for item in tree.get_children():
-        day_data.append(tree.item(item)["values"])  # Store row data
+        day_data.append(tree.item(item)["values"])
     
     if day_data:
-        all_data.append((f"Day {day_count}", day_data))  # Store with day label
+        all_data.append((f"Day {day_count}", day_data))
 
-    if day_count == duration_days: # Display table and pie chart when duration is reached
+    if day_count == duration_days:
         all_expenses = [item for day, data in all_data for item in data]
-        budget = [total_amount]  # For calculations
-        display_table_Chart(all_expenses, budget)  # Display table and chart
+        budget = [total_amount]
+        display_table_Chart(all_expenses, budget)
         return
 
     # Increment the day count
@@ -265,7 +265,7 @@ def next_day():
 
 def update_total_label():
     """Updates the total amount label."""
-    total_label.config(text=f"Total: {total_amount:.2f}")  # Format to 2 decimal places
+    total_label.config(text=f"Total: {total_amount:.2f}")
 
 def display_table_Chart(data, budget):  
     global chart_frame
