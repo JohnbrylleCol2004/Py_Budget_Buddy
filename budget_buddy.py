@@ -7,11 +7,13 @@ import sqlite3
 import os
 
 # Global variables
-day_count = 1  
-all_data = []  
-total_amount = 0  
-duration_days = 0  
-DATABASE_NAME = "input.db"  
+day_count = 1  # Initialize the day counter
+all_data = []  # List to store past days' data
+total_amount = 0  # Initialize total amount
+duration_days = 0  # Initialize duration days
+DATABASE_NAME = "input.db"  # Database file name (updated to input.db)
+input_title = ""  # Initialize input title
+input_budget = 0.0  # Initialize input budget
 
 # Function to initialize the database
 def initialize_database():
@@ -52,18 +54,24 @@ def fetch_database():
 
 # Function to switch to the second screen
 def go_to_budget_screen():
-    welcome_screen.pack_forget()  
-    budget_screen.pack()  
+    welcome_screen.pack_forget()  # Hide welcome screen
+    budget_screen.pack()  # Show budget input screen
 
 # Function to handle the submit button in the budget input screen
 def submit_budget():
-    global duration_days
+    global duration_days, input_title, input_budget
     try:
         duration_days = int(duration_entry.get())
+        input_title = title_entry.get()
+        input_budget = float(budget_entry.get())
         if duration_days <= 0:
             raise ValueError("Duration must be a positive integer.")
-        budget_screen.pack_forget()  
-        create_expense_tracker_gui()  
+        if not input_title:
+            raise ValueError("Title cannot be empty.")
+        if input_budget <= 0:
+            raise ValueError("Budget must be a positive number.")
+        budget_screen.pack_forget()  # Hide budget input screen
+        create_expense_tracker_gui()  # Show expense tracker GUI
     except ValueError as e:
         messagebox.showerror("Invalid Input", str(e))
 
@@ -90,16 +98,16 @@ def restore_placeholder(event):
 root = tk.Tk()
 root.title("Budget Buddy")
 root.geometry("400x500")
-root.configure(bg="purple")
+root.configure(bg="#5e17eb")
 
 # Welcome Screen
-welcome_screen = tk.Frame(root, bg="purple")
+welcome_screen = tk.Frame(root, bg="#5e17eb")
 welcome_screen.pack(fill="both", expand=True)
 
-welcome_label = tk.Label(welcome_screen, text="WELCOME", font=("Arial", 18, "bold"), fg="white", bg="purple")
+welcome_label = tk.Label(welcome_screen, text="WELCOME", font=("Arial", 18, "bold"), fg="white", bg="#5e17eb")
 welcome_label.pack(pady=20)
 
-app_name_label = tk.Label(welcome_screen, text="Budget Buddy", font=("Arial", 16, "bold"), fg="white", bg="purple")
+app_name_label = tk.Label(welcome_screen, text="Budget Buddy", font=("Arial", 16, "bold"), fg="white", bg="#5e17eb")
 app_name_label.pack(pady=10)
 
 start_button = tk.Button(welcome_screen, text="START YOUR JOURNEY!", font=("Arial", 12, "bold"), 
@@ -107,10 +115,10 @@ start_button = tk.Button(welcome_screen, text="START YOUR JOURNEY!", font=("Aria
 start_button.pack(pady=20)
 
 # Budget Input Screen
-budget_screen = tk.Frame(root, bg="purple")
+budget_screen = tk.Frame(root, bg="#5e17eb")
 
 title_label = tk.Label(budget_screen, text="Let's start your budgeting journey", 
-                       font=("Arial", 16, "bold"), fg="white", bg="purple")
+                       font=("Arial", 16, "bold"), fg="white", bg="#5e17eb")
 title_label.pack(pady=20)
 
 title_entry = tk.Entry(budget_screen, width=30, font=("Arial", 12), fg="grey")
@@ -136,7 +144,7 @@ submit_button.pack(pady=20)
 
 # Expense Tracker GUI
 def create_expense_tracker_gui():
-    global date_entry, category_combo, item_entry, amount_entry, tree, day_label, total_label, root
+    global date_entry, category_combo, item_entry, amount_entry, tree, day_label, total_label, root, remaining_label
 
     root.geometry("880x450")
     
@@ -184,8 +192,8 @@ def create_expense_tracker_gui():
     tree = ttk.Treeview(table_frame, columns=columns, show="headings")
     
     for col in columns:
-        tree.heading(col, text=col)  
-        tree.column(col, width=140, anchor="center") 
+        tree.heading(col, text=col)  # Bold headers
+        tree.column(col, width=140, anchor="center")  # Center align data
     
     tree.pack(expand=True, fill="both")
     
@@ -193,7 +201,8 @@ def create_expense_tracker_gui():
     footer_frame = tk.Frame(root, bg="lightyellow", padx=10, pady=5)
     footer_frame.place(x=250, y=360, width=600)
     
-    tk.Label(footer_frame, text="Remaining:\t\t", font=("Arial", 12, "bold"), bg="lightyellow").grid(row=0, column=0, sticky="w")
+    remaining_label = tk.Label(footer_frame, text=f"Remaining: {input_budget:.2f}", font=("Arial", 12, "bold"), bg="lightyellow")
+    remaining_label.grid(row=0, column=0, sticky="w")
     
     # Total Amount Label (Updated Dynamically)
     total_label = tk.Label(footer_frame, text="Total: 0.00", font=("Arial", 12, "bold"), bg="lightyellow")
@@ -211,13 +220,13 @@ def insert_data():
     
     if date and category and item and amount:
         try:
-            amount = float(amount)  
+            amount = float(amount)  # Convert amount to float for summation
             tree.insert("", "end", values=(date, category, item, f"{amount:.2f}"))
-            total_amount += amount  
-            update_total_label()  
+            total_amount += amount  # Update total
+            update_total_label()  # Refresh the total amount display
 
-            save_to_database(date, category, item, amount)
-            reset_inputs()
+            save_to_database(date, category, item, amount)  # Save to database
+            reset_inputs()  # Reset input fields after inserting data
         except ValueError:
             messagebox.showerror("Input Error", "Amount must be a number.")
     else:
@@ -225,10 +234,10 @@ def insert_data():
 
 def reset_inputs():
     """Clears input fields for new entry."""
-    date_entry.set_date(None)
-    category_combo.set("")
-    item_entry.delete(0, tk.END)
-    amount_entry.delete(0, tk.END)
+    date_entry.set_date(None)  # Reset date field correctly
+    category_combo.set("")  # Reset category selection
+    item_entry.delete(0, tk.END)  # Clear item field
+    amount_entry.delete(0, tk.END)  # Clear amount field
 
 def next_day():
     """Progresses the day count, saves current data, resets table, and keeps total."""
@@ -242,15 +251,15 @@ def next_day():
     # Save the current day's data
     day_data = []
     for item in tree.get_children():
-        day_data.append(tree.item(item)["values"])
+        day_data.append(tree.item(item)["values"])  # Store row data
     
     if day_data:
-        all_data.append((f"Day {day_count}", day_data))
+        all_data.append((f"Day {day_count}", day_data))  # Store with day label
 
-    if day_count == duration_days:
+    if day_count == duration_days: # Display table and pie chart when duration is reached
         all_expenses = [item for day, data in all_data for item in data]
-        budget = [total_amount]
-        display_table_Chart(all_expenses, budget)
+        budget = [input_budget]  # For calculations
+        display_table_Chart(all_expenses, budget)  # Display table and chart
         return
 
     # Increment the day count
@@ -265,7 +274,9 @@ def next_day():
 
 def update_total_label():
     """Updates the total amount label."""
-    total_label.config(text=f"Total: {total_amount:.2f}")
+    total_label.config(text=f"Total: {total_amount:.2f}")  # Format to 2 decimal places
+    remaining = input_budget - total_amount
+    remaining_label.config(text=f"Remaining: {remaining:.2f}")
 
 def display_table_Chart(data, budget):  
     global chart_frame
@@ -275,7 +286,7 @@ def display_table_Chart(data, budget):
     for widget in root.winfo_children():
         widget.destroy()
 
-    header = tk.Label(root, text="Duration Complete", font=("Arial", 14, "bold"))
+    header = tk.Label(root, text=f"{input_title} - Duration Complete", font=("Arial", 14, "bold"))
     header.pack(side="top", fill="x")
 
     content_frame = tk.Frame(root)
@@ -367,7 +378,7 @@ def show_data():
     """Displays all data from the database."""
     data = fetch_database()
     if data:
-        display_table_Chart(data, [total_amount])
+        display_table_Chart(data, [input_budget])
     else:
         messagebox.showinfo("No Data", "No expenses found in the database.")
 
